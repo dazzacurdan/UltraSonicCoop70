@@ -1,4 +1,3 @@
-	
 #Libraries
 import argparse
 import RPi.GPIO as GPIO
@@ -99,7 +98,7 @@ class UltraSound:
  
 if __name__ == '__main__':
     ultraSound1 = UltraSound("#1",7,11)
-    osc = OSCVideoCommand()
+    osc = OSCVideoCommand("192.168.1.3",9000)
 
     try:
         ultraSound1.start()
