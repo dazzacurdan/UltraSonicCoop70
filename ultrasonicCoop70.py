@@ -1,3 +1,8 @@
+#!/usr/bin/python
+#
+#https://tutorials-raspberrypi.com/raspberry-pi-ultrasonic-sensor-hc-sr04/
+#https://pimylifeup.com/raspberry-pi-distance-sensor/
+#
 #Libraries
 import argparse
 import RPi.GPIO as GPIO
@@ -99,10 +104,12 @@ class UltraSound:
 if __name__ == '__main__':
     ultraSound1 = UltraSound("#1",7,11)
     osc = OSCVideoCommand("192.168.1.3",9000)
-
+    ultraSound1.start()
+    osc.start()
+    
     try:
-        ultraSound1.start()
-        osc.start()
+        while True :
+        time.sleep(0.1)
         # Reset by pressing CTRL + C
     except KeyboardInterrupt:
         print("Measurement stopped by User")
