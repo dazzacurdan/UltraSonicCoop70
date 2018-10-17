@@ -6,7 +6,7 @@
 #Libraries
 import argparse
 import RPi.GPIO as GPIO
-from threading import Thread
+import threading
 from pythonosc import osc_message_builder
 from pythonosc import udp_client
 import time
@@ -17,102 +17,147 @@ lock = threading.Lock()
 
 playVideo = False
 
-class OSCVideoCommand:
-    globalVideoPath = "/home/pi/media"
+class OSCVideoCommand(threading.Thread):
+    
     def __init__(self,ip,port):
+        threading.Thread.__init__(self)
+        self.globalVideoPath = "/home/pi/media"
         parser_pc = argparse.ArgumentParser()
         parser_pc.add_argument("--ip", default=ip,
         help="The ip of the OSC server")
         parser_pc.add_argument("--port", type=int, default=port,
         help="The port the OSC server is listening on")
         args = parser_pc.parse_args()
-        self.client = udp_client.SimpleUDPClient(args.ip, args_pc.port)
+        self.client = udp_client.SimpleUDPClient(args.ip, args.port)
         self.videoNumber = 0
         self.isPlaying = False
-        Thread.__init__(videoToPlay)
-
-    def videoPaths(x):
-        return {
-        0: [globalVideoPath+"/01-ZANUSO.mp4", 59 ],
-        1: [globalVideoPath+"/02-ZANUSO.mp4", 53 ],
-        2: [globalVideoPath+"/03-ZANUSO.mp4", 60 ],
-        3: [globalVideoPath+"/04-ZANUSO.mp4", 67 ],
-        4: [globalVideoPath+"/05-ZANUSO.mp4", 67 ],
-        5: [globalVideoPath+"/06-ZANUSO.mp4", 80 ],
-        6: [globalVideoPath+"/07-ZANUSO.mp4", 87 ],
-        7: [globalVideoPath+"/08-ZANUSO.mp4", 59 ],
-        8: [globalVideoPath+"/09-ZANUSO.mp4", 86 ],
-        9: [globalVideoPath+"/10-ZANUSO.mp4", 52 ],
-        }.get(x, [globalVideoPath+"/00.mp4", 10 ])
     
-    def playingVideo():
-        path = videoPaths(self.videoNumber)
+    def videoPaths(self,x):
+        return {
+        0: [self.globalVideoPath+"/01-ZANUSO.mp4", 59 ],
+        1: [self.globalVideoPath+"/02-ZANUSO.mp4", 53 ],
+        2: [self.globalVideoPath+"/03-ZANUSO.mp4", 60 ],
+        3: [self.globalVideoPath+"/04-ZANUSO.mp4", 67 ],
+        4: [self.globalVideoPath+"/05-ZANUSO.mp4", 67 ],
+        5: [self.globalVideoPath+"/06-ZANUSO.mp4", 80 ],
+        6: [self.globalVideoPath+"/07-ZANUSO.mp4", 87 ],
+        7: [self.globalVideoPath+"/08-ZANUSO.mp4", 59 ],
+        8: [self.globalVideoPath+"/09-ZANUSO.mp4", 86 ],
+        9: [self.globalVideoPath+"/10-ZANUSO.mp4", 52 ],
+        }.get(x, [self.globalVideoPath+"/00.mp4", 10 ])
+    
+    def playingVideo(self):
+        path = self.videoPaths(self.videoNumber)
+        print ("/play: "+path[0])
         self.client.send_message("/play", path[0] )
         time.sleep(path[1])
+        print ("/play: "+globalVideoPath+"/LOOP-B-Zanuso.mp4")
         client.send_message("/play", globalVideoPath+"/LOOP-B-Zanuso.mp4" )
-        lock.acquire()
         self.isPlaying = False
-        lock.stop()
-    
-    def videoToPlay():
+        self.videoNumber = (self.videoNumber+1)%10
+        time.sleep(2)
+        
+    def run(self):
+        global playVideo
+        _playVideo = False
         while True:
+            if(self.stopEvent.wait(0)):
+                print (self.name+":Asked to stop")
+                break;
             lock.acquire()
-            if( playVideo and (not self.isPlaying) ):
-                self.isPlaying = True
-                threading.Thread(target=playingVideo, args=(lock,path[1]), name='eventLockHolder').start()
-            lock.release()
+            try:
+                _playVideo = playVideo
+            finally:
+                lock.release()
 
-class UltraSound:
-    th = 5 #cm
-    def __init__(self,name,trigger,echo):
+            if( _playVideo and (not self.isPlaying) ):
+                self.isPlaying = True
+                self.playingVideo()
+        print (self.name+":Stopped")
+
+class UltraSound(threading.Thread):
+    
+    def __init__(self,event,name,trigger,echo):
+        threading.Thread.__init__(self)
         self.name = name
         self.gpioTrigger = trigger
         self.gpioEcho = echo
+        self.stopEvent = event
+
+    def measureDistance(self):
+        GPIO.output(self.gpioTrigger, False)                 #Set TRIG as LOW
+        #print ("Waitng For Sensor To Settle")
+        time.sleep(0.1)                            #Delay of 2 seconds
+
+        GPIO.output(self.gpioTrigger, True)                  #Set TRIG as HIGH
+        time.sleep(0.00001)                      #Delay of 0.00001 seconds
+        GPIO.output(self.gpioTrigger, False)                 #Set TRIG as LOW
+
+        pulse_start = time.time()
+        pulse_end = time.time()
+
+        while GPIO.input(self.gpioEcho)==0:               #Check whether the ECHO is LOW
+            pulse_start = time.time()                      #Saves the last known time of LOW pulse
+
+        while GPIO.input(self.gpioEcho)==1:               #Check whether the ECHO is HIGH
+            pulse_end = time.time()                #Saves the last known time of HIGH pulse 
+
+        pulse_duration = pulse_end - pulse_start #Get pulse duration to a variable
+
+        distance = pulse_duration * 17150        #Multiply pulse duration by 17150 to get distance
+        distance = round(distance, 2) - 0.5           #Round to two decimal points
+        return distance
+
+    def run(self):
+        th=30
+        pulse_start=time.time()
+        pulse_end=time.time()
         GPIO.setup(self.gpioTrigger, GPIO.OUT)
         GPIO.setup(self.gpioEcho, GPIO.IN)
-        Thread.__init__(distance)
         time.sleep(2)
-        print "UltraSound "+name+" ready"
-
-    def distance():
+        print("UltraSound "+self.name+" ready on port "+str(self.gpioTrigger)+" "+str(self.gpioEcho))
+        
         while True:
-            # set Trigger to HIGH
-            GPIO.output(self.gpioTrigger, True)
-            # set Trigger after 0.01ms to LOW
-            time.sleep(0.00001)
-            GPIO.output(self.gpioTrigger, False)
-            StartTime = time.time()
-            StopTime = time.time()
-            # save StartTime
-            while GPIO.input(self.gpioEcho) == 0:
-                StartTime = time.time()
-            # save time of arrival
-            while GPIO.input(self.gpioEcho) == 1:
-                StopTime = time.time()
-            # time difference between start and arrival
-            TimeElapsed = StopTime - StartTime
-            # multiply with the sonic speed (34300 cm/s)
-            # and divide by 2, because there and back
-            distance = round(TimeElapsed * 17150, 2)
-            print ("Measured Distance = %.1f cm" % distance)
-            if (distance < self.th):
+            if(self.stopEvent.wait(0)):
+                print (self.name+":Asked to stop")
+                break;
+            distance = self.measureDistance()
+            print (self.name+" distance: "+str(distance)+" cm "+str(th))
+            if (distance > 2 and distance < th):
                 lock.acquire()
-                playVideo = True
-                lock.release()
-            time.sleep(1)
+                try:
+                    print("Play: "+self.name)
+                    playVideo = true
+                finally:
+                    lock.release()
+
+        print (self.name+":Stopped")
+
+
  
 if __name__ == '__main__':
-    ultraSound1 = UltraSound("#1",7,11)
-    osc = OSCVideoCommand("192.168.1.3",9000)
-    ultraSound1.start()
+    osc = OSCVideoCommand("127.0.0.1",9000)
     osc.start()
+    myInstances = []
+    myClasses = {
+        "myObj01": [aStopEvent,"a",23,24],
+        "myObj02": [aStopEvent,"b",27,22],
+        "myObj03": [aStopEvent,"c",23,24],
+        }
     
+    myInstances = [UltraSound(myClasses[thisClass][0],myClasses[thisClass][1],myClasses[thisClass][2],myClasses[thisClass][3]) for thisClass in myClasses.keys()]
+    
+    for thisObj in myInstances:
+        thisObj.start()
+
     try:
         while True :
-        time.sleep(0.1)
-        # Reset by pressing CTRL + C
+            time.sleep(0.1)
+            # Reset by pressing CTRL + C
     except KeyboardInterrupt:
         print("Measurement stopped by User")
-        ultraSound1.stop()
-        osc.stop()
+        aStopEvent.set()
+        for thisObj in myInstances:
+            thisObj.join()
+        osc.join()
         GPIO.cleanup()
