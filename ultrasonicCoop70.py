@@ -18,65 +18,6 @@ aStopEvent = threading.Event()
 isPlaying = False
 videoNumber = 0
 
-class OSCVideoCommand(threading.Thread):
-    
-    def __init__(self,event,ip,port):
-        threading.Thread.__init__(self)
-        self.globalVideoPath = "/home/pi/media"
-        parser_pc = argparse.ArgumentParser()
-        parser_pc.add_argument("--ip", default=ip,
-        help="The ip of the OSC server")
-        parser_pc.add_argument("--port", type=int, default=port,
-        help="The port the OSC server is listening on")
-        args = parser_pc.parse_args()
-        self.client = udp_client.SimpleUDPClient(args.ip, args.port)
-        self.videoNumber = 0
-        self.isPlaying = False
-        self.stopEvent = event
-    
-    def videoPaths(self,x):
-        return {
-        0: [self.globalVideoPath+"/01-ZANUSO.mp4", 59 ],
-        1: [self.globalVideoPath+"/02-ZANUSO.mp4", 53 ],
-        2: [self.globalVideoPath+"/03-ZANUSO.mp4", 60 ],
-        3: [self.globalVideoPath+"/04-ZANUSO.mp4", 67 ],
-        4: [self.globalVideoPath+"/05-ZANUSO.mp4", 67 ],
-        5: [self.globalVideoPath+"/06-ZANUSO.mp4", 80 ],
-        6: [self.globalVideoPath+"/07-ZANUSO.mp4", 87 ],
-        7: [self.globalVideoPath+"/08-ZANUSO.mp4", 59 ],
-        8: [self.globalVideoPath+"/09-ZANUSO.mp4", 86 ],
-        9: [self.globalVideoPath+"/10-ZANUSO.mp4", 52 ],
-        }.get(x, [self.globalVideoPath+"/00.mp4", 10 ])
-    
-    def playingVideo(self):
-        path = self.videoPaths(self.videoNumber)
-        print ("/play: "+path[0])
-        self.client.send_message("/play", path[0] )
-        time.sleep(path[1])
-        print ("/play: "+globalVideoPath+"/LOOP-B-Zanuso.mp4")
-        client.send_message("/play", globalVideoPath+"/LOOP-B-Zanuso.mp4" )
-        self.isPlaying = False
-        self.videoNumber = (self.videoNumber+1)%10
-        time.sleep(2)
-        
-    def run(self):
-        global playVideo
-        _playVideo = False
-        while True:
-            if(self.stopEvent.wait(0)):
-                print (self.name+":Asked to stop")
-                break;
-            lock.acquire()
-            try:
-                _playVideo = playVideo
-            finally:
-                lock.release()
-
-            if( _playVideo and (not self.isPlaying) ):
-                self.isPlaying = True
-                self.playingVideo()
-        print (self.name+":Stopped")
-
 class UltraSound(threading.Thread):
     
     def __init__(self,event,name,trigger,echo):
@@ -107,17 +48,14 @@ class UltraSound(threading.Thread):
     
     def videoPaths(self,x):
         return {
-        0: [self.globalVideoPath+"/01-ZANUSO.mp4", 10 ],
-        1: [self.globalVideoPath+"/02-ZANUSO.mp4", 10 ],
-        2: [self.globalVideoPath+"/03-ZANUSO.mp4", 60 ],
-        3: [self.globalVideoPath+"/04-ZANUSO.mp4", 67 ],
-        4: [self.globalVideoPath+"/05-ZANUSO.mp4", 67 ],
-        5: [self.globalVideoPath+"/06-ZANUSO.mp4", 80 ],
-        6: [self.globalVideoPath+"/07-ZANUSO.mp4", 87 ],
-        7: [self.globalVideoPath+"/08-ZANUSO.mp4", 59 ],
-        8: [self.globalVideoPath+"/09-ZANUSO.mp4", 86 ],
-        9: [self.globalVideoPath+"/10-ZANUSO.mp4", 52 ],
-        }.get(x, [self.globalVideoPath+"/LOOP.mp4", 10])
+        0: [self.globalVideoPath+"/01.mov", 39 ],
+        1: [self.globalVideoPath+"/02.mov", 49 ],
+        2: [self.globalVideoPath+"/03.mov", 87 ],
+        3: [self.globalVideoPath+"/04.mov", 55 ],
+        4: [self.globalVideoPath+"/05.mov", 55 ],
+        5: [self.globalVideoPath+"/06.mov", 55 ],
+        6: [self.globalVideoPath+"/07.mov", 80 ],
+        }.get(x, [self.globalVideoPath+"/Loop_olio.mp4", 10])
 
     def measureDistance(self):
         GPIO.output(self.gpioTrigger, False)                 #Set TRIG as LOW
@@ -180,7 +118,7 @@ class UltraSound(threading.Thread):
                 print (self.name+":Asked to stop")
                 break;
             distance = self.measureDistance()
-            #print (self.name+" distance: "+str(distance)+" cm "+str(th))
+            print (self.name+" distance: "+str(distance)+" cm "+str(th))
             if ((not isPlaying) and distance > 2 and distance < th):
                 lock.acquire()
                 try:
@@ -203,13 +141,10 @@ class UltraSound(threading.Thread):
 
  
 if __name__ == '__main__':
-    #osc = OSCVideoCommand(aStopEvent,"127.0.0.1",9000)
-    #osc.start()
     myInstances = []
     myClasses = {
         "myObj01": [aStopEvent,"a",23,24],
         "myObj02": [aStopEvent,"b",27,22],
-        #"myObj03": [aStopEvent,"c",23,24],
         }
     
     myInstances = [UltraSound(myClasses[thisClass][0],myClasses[thisClass][1],myClasses[thisClass][2],myClasses[thisClass][3]) for thisClass in myClasses.keys()]
@@ -226,5 +161,4 @@ if __name__ == '__main__':
         aStopEvent.set()
         for thisObj in myInstances:
             thisObj.join()
-        #osc.join()
         GPIO.cleanup()

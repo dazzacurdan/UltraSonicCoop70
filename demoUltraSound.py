@@ -2,8 +2,11 @@ import RPi.GPIO as GPIO                    #Import GPIO library
 import time                                #Import time library
 GPIO.setmode(GPIO.BCM)                     #Set GPIO pin numbering 
 
-TRIG = 23                                  #Associate pin 23 to TRIG
-ECHO = 24                                  #Associate pin 24 to ECHO
+#TRIG = 23                                  #Associate pin 23 to TRIG
+#ECHO = 24                                  #Associate pin 24 to ECHO
+
+TRIG = 27                                  #Associate pin 23 to TRIG
+ECHO = 22                                  #Associate pin 24 to ECHO
 
 print ("Distance measurement in progress")
 
@@ -34,4 +37,5 @@ while True:
   if distance > 2 and distance < 400:      #Check whether the distance is within range
     print ("Distance:",distance - 0.5,"cm")  #Print distance with 0.5 cm calibration
   else:
-    print ("Out Of Range")                   #display out of range
+    print ("Out Of Range")
+GPIO.cleanup()                   #display out of range
