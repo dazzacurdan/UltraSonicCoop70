@@ -55,7 +55,7 @@ class UltraSound(threading.Thread):
         4: [self.globalVideoPath+"/05.mov", 55 ],
         5: [self.globalVideoPath+"/06.mov", 55 ],
         6: [self.globalVideoPath+"/07.mov", 80 ],
-        }.get(x, [self.globalVideoPath+"/Loop_olio.mp4", 10])
+        }.get(x, [self.globalVideoPath+"/Loop_olio.mov", 10])
 
     def measureDistance(self):
         GPIO.output(self.gpioTrigger, False)                 #Set TRIG as LOW
@@ -98,9 +98,9 @@ class UltraSound(threading.Thread):
             print ("/play: "+path[0])
             self.client.send_message("/play", path[0] )
             videoNumber = (videoNumber+1)%10
+            time.sleep(2)
         finally:
             lock.release()
-        time.sleep(2)
 
     def run(self):
         th=30
